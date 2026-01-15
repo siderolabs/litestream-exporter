@@ -23,8 +23,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Compaction level names for human-readable labels
-// Level 9 is the snapshot level in litestream
+// Compaction level names for human-readable labels.
+// Level 9 is the snapshot level in litestream.
 var levelNames = map[int]string{
 	0: "L0 (raw)",
 	1: "L1 (30s)",
@@ -41,9 +41,9 @@ type LevelStats struct {
 
 // LTXStats holds aggregated LTX file statistics.
 type LTXStats struct {
-	TotalFiles int
-	TotalBytes int64
 	ByLevel    map[int]*LevelStats
+	TotalBytes int64
+	TotalFiles int
 }
 
 // NewLTXStats creates a new LTXStats instance.
@@ -55,28 +55,30 @@ func NewLTXStats() *LTXStats {
 
 // LitestreamExporter collects and exposes Litestream metrics.
 type LitestreamExporter struct {
-	localLTXDir string
-	s3Bucket    string
-	s3Prefix    string
-	s3Client    *s3.Client
-	logger      *slog.Logger
+	s3Client *s3.Client
+	logger   *slog.Logger
 
 	// Prometheus metrics - Local LTX
-	localLTXFilesTotal   prometheus.Gauge
-	localLTXBytesTotal   prometheus.Gauge
 	localLTXFilesByLevel *prometheus.GaugeVec
 	localLTXBytesByLevel *prometheus.GaugeVec
 
 	// Prometheus metrics - Remote LTX (S3/R2)
-	remoteLTXFilesTotal   prometheus.Gauge
-	remoteLTXBytesTotal   prometheus.Gauge
 	remoteLTXFilesByLevel *prometheus.GaugeVec
 	remoteLTXBytesByLevel *prometheus.GaugeVec
 
 	// Scrape metadata
+	scrapeErrors *prometheus.GaugeVec
+
+	localLTXFiles         prometheus.Gauge
+	localLTXBytes         prometheus.Gauge
+	remoteLTXFiles        prometheus.Gauge
+	remoteLTXBytes        prometheus.Gauge
 	lastScrapeTimestamp   prometheus.Gauge
 	scrapeDurationSeconds prometheus.Gauge
-	scrapeErrorsTotal     *prometheus.GaugeVec
+
+	localLTXDir string
+	s3Bucket    string
+	s3Prefix    string
 }
 
 // NewLitestreamExporter creates a new LitestreamExporter instance.
@@ -114,12 +116,12 @@ func NewLitestreamExporter(
 	}
 
 	// Initialize Prometheus metrics - Local LTX
-	exporter.localLTXFilesTotal = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "ops_litestream_local_ltx_files_total",
+	exporter.localLTXFiles = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ops_litestream_local_ltx_files",
 		Help: "Total number of LTX files in local metadata directory",
 	})
-	exporter.localLTXBytesTotal = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "ops_litestream_local_ltx_bytes_total",
+	exporter.localLTXBytes = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ops_litestream_local_ltx_bytes",
 		Help: "Total size of LTX files in local metadata directory in bytes",
 	})
 	exporter.localLTXFilesByLevel = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -132,12 +134,12 @@ func NewLitestreamExporter(
 	}, []string{"level", "level_name"})
 
 	// Initialize Prometheus metrics - Remote LTX (S3/R2)
-	exporter.remoteLTXFilesTotal = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "ops_litestream_remote_ltx_files_total",
+	exporter.remoteLTXFiles = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ops_litestream_remote_ltx_files",
 		Help: "Total number of LTX files in remote replica (S3/R2)",
 	})
-	exporter.remoteLTXBytesTotal = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "ops_litestream_remote_ltx_bytes_total",
+	exporter.remoteLTXBytes = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ops_litestream_remote_ltx_bytes",
 		Help: "Total size of LTX files in remote replica (S3/R2) in bytes",
 	})
 	exporter.remoteLTXFilesByLevel = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -158,24 +160,24 @@ func NewLitestreamExporter(
 		Name: "ops_litestream_scrape_duration_seconds",
 		Help: "Duration of the last metrics scrape in seconds",
 	})
-	exporter.scrapeErrorsTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "ops_litestream_scrape_errors_total",
+	exporter.scrapeErrors = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ops_litestream_scrape_errors",
 		Help: "Total number of scrape errors",
 	}, []string{"source"})
 
 	// Register all metrics
 	prometheus.MustRegister(
-		exporter.localLTXFilesTotal,
-		exporter.localLTXBytesTotal,
+		exporter.localLTXFiles,
+		exporter.localLTXBytes,
 		exporter.localLTXFilesByLevel,
 		exporter.localLTXBytesByLevel,
-		exporter.remoteLTXFilesTotal,
-		exporter.remoteLTXBytesTotal,
+		exporter.remoteLTXFiles,
+		exporter.remoteLTXBytes,
 		exporter.remoteLTXFilesByLevel,
 		exporter.remoteLTXBytesByLevel,
 		exporter.lastScrapeTimestamp,
 		exporter.scrapeDurationSeconds,
-		exporter.scrapeErrorsTotal,
+		exporter.scrapeErrors,
 	)
 
 	return exporter, nil
@@ -187,6 +189,7 @@ func NewLitestreamExporter(
 // Returns -1 if level cannot be determined.
 func parseLevelFromPath(path string) int {
 	re := regexp.MustCompile(`/(\d{1,4})/`)
+
 	matches := re.FindStringSubmatch(path)
 	if len(matches) > 1 {
 		level, err := strconv.Atoi(matches[1])
@@ -194,6 +197,7 @@ func parseLevelFromPath(path string) int {
 			return level
 		}
 	}
+
 	return -1
 }
 
@@ -202,6 +206,7 @@ func getLevelName(level int) string {
 	if name, ok := levelNames[level]; ok {
 		return name
 	}
+
 	return fmt.Sprintf("L%d (unknown)", level)
 }
 
@@ -211,18 +216,21 @@ func (e *LitestreamExporter) collectLocalStats() *LTXStats {
 
 	if e.localLTXDir == "" {
 		e.logger.Warn("Local LTX directory not configured")
+
 		return stats
 	}
 
 	info, err := os.Stat(e.localLTXDir)
 	if err != nil || !info.IsDir() {
 		e.logger.Warn("Local LTX directory not found", "path", e.localLTXDir)
+
 		return stats
 	}
 
 	err = filepath.Walk(e.localLTXDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			e.logger.Warn("Error accessing file", "path", path, "error", err)
+
 			return nil
 		}
 
@@ -240,13 +248,13 @@ func (e *LitestreamExporter) collectLocalStats() *LTXStats {
 			if stats.ByLevel[level] == nil {
 				stats.ByLevel[level] = &LevelStats{}
 			}
+
 			stats.ByLevel[level].FileCount++
 			stats.ByLevel[level].TotalBytes += fileSize
 		}
 
 		return nil
 	})
-
 	if err != nil {
 		e.logger.Error("Error walking local directory", "error", err)
 	}
@@ -260,6 +268,7 @@ func (e *LitestreamExporter) collectRemoteStats(ctx context.Context) (*LTXStats,
 
 	if e.s3Client == nil {
 		e.logger.Warn("S3 client not configured, skipping remote stats")
+
 		return stats, nil
 	}
 
@@ -295,6 +304,7 @@ func (e *LitestreamExporter) collectRemoteStats(ctx context.Context) (*LTXStats,
 				if stats.ByLevel[level] == nil {
 					stats.ByLevel[level] = &LevelStats{}
 				}
+
 				stats.ByLevel[level].FileCount++
 				stats.ByLevel[level].TotalBytes += fileSize
 			}
@@ -310,8 +320,8 @@ func (e *LitestreamExporter) UpdateMetrics(ctx context.Context) {
 
 	// Collect local stats
 	localStats := e.collectLocalStats()
-	e.localLTXFilesTotal.Set(float64(localStats.TotalFiles))
-	e.localLTXBytesTotal.Set(float64(localStats.TotalBytes))
+	e.localLTXFiles.Set(float64(localStats.TotalFiles))
+	e.localLTXBytes.Set(float64(localStats.TotalBytes))
 
 	// Reset level metrics before updating (to handle removed levels)
 	for level := range levelNames {
@@ -335,10 +345,10 @@ func (e *LitestreamExporter) UpdateMetrics(ctx context.Context) {
 	remoteStats, err := e.collectRemoteStats(ctx)
 	if err != nil {
 		e.logger.Error("Error collecting remote stats", "error", err)
-		e.scrapeErrorsTotal.WithLabelValues("remote").Inc()
+		e.scrapeErrors.WithLabelValues("remote").Inc()
 	} else {
-		e.remoteLTXFilesTotal.Set(float64(remoteStats.TotalFiles))
-		e.remoteLTXBytesTotal.Set(float64(remoteStats.TotalBytes))
+		e.remoteLTXFiles.Set(float64(remoteStats.TotalFiles))
+		e.remoteLTXBytes.Set(float64(remoteStats.TotalBytes))
 
 		// Reset level metrics before updating
 		for level := range levelNames {
@@ -360,6 +370,7 @@ func (e *LitestreamExporter) UpdateMetrics(ctx context.Context) {
 	}
 
 	duration := time.Since(startTime).Seconds()
+
 	e.lastScrapeTimestamp.Set(float64(time.Now().Unix()))
 	e.scrapeDurationSeconds.Set(duration)
 	e.logger.Info("Metrics update completed", "duration_seconds", fmt.Sprintf("%.2f", duration))
@@ -382,11 +393,8 @@ func runCollector(ctx context.Context, exporter *LitestreamExporter, interval ti
 	}
 }
 
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+func getEnv(key string) string {
+	return os.Getenv(key)
 }
 
 func getEnvInt(key string, defaultValue int) int {
@@ -395,6 +403,7 @@ func getEnvInt(key string, defaultValue int) int {
 			return intVal
 		}
 	}
+
 	return defaultValue
 }
 
@@ -404,12 +413,12 @@ func main() {
 	}))
 
 	// Configuration from environment variables
-	localLTXDir := getEnv("LOCAL_LTX_DIR", "")
-	s3Bucket := getEnv("S3_BUCKET", "")
-	s3Prefix := getEnv("S3_PREFIX", "")
-	s3EndpointURL := getEnv("S3_ENDPOINT_URL", "")
-	awsAccessKeyID := getEnv("LITESTREAM_ACCESS_KEY_ID", "")
-	awsSecretAccessKey := getEnv("LITESTREAM_SECRET_ACCESS_KEY", "")
+	localLTXDir := getEnv("LOCAL_LTX_DIR")
+	s3Bucket := getEnv("S3_BUCKET")
+	s3Prefix := getEnv("S3_PREFIX")
+	s3EndpointURL := getEnv("S3_ENDPOINT_URL")
+	awsAccessKeyID := getEnv("LITESTREAM_ACCESS_KEY_ID")
+	awsSecretAccessKey := getEnv("LITESTREAM_SECRET_ACCESS_KEY")
 	metricsPort := getEnvInt("METRICS_PORT", 9090)
 	scrapeInterval := getEnvInt("SCRAPE_INTERVAL_SECONDS", 60)
 
@@ -446,11 +455,14 @@ func main() {
 
 	// Start background collector
 	var wg sync.WaitGroup
+
 	wg.Add(1)
+
 	go runCollector(ctx, exporter, time.Duration(scrapeInterval)*time.Second, &wg)
 
 	// Start Prometheus HTTP server
 	http.Handle("/metrics", promhttp.Handler())
+
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", metricsPort),
 		ReadHeaderTimeout: 10 * time.Second,
@@ -458,6 +470,7 @@ func main() {
 
 	go func() {
 		logger.Info("Prometheus metrics available", "url", fmt.Sprintf("http://0.0.0.0:%d/metrics", metricsPort))
+
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("HTTP server error", "error", err)
 		}
@@ -474,6 +487,7 @@ func main() {
 	// Shutdown HTTP server
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
+
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error("HTTP server shutdown error", "error", err)
 	}
@@ -486,5 +500,6 @@ func orDefault(value, defaultValue string) string {
 	if value == "" {
 		return defaultValue
 	}
+
 	return value
 }

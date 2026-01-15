@@ -1,4 +1,4 @@
-module github.com/alongwill/ops-cloudflare-helper
+module github.com/alongwill/litestream-exporter
 
 go 1.25.0
 

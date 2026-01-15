@@ -5,25 +5,25 @@ A sidecar container that monitors Litestream LTX files (local and remote) and ex
 ## Metrics
 
 | Metric | Type | Description |
-|--------|------|-------------|
-| `ops_litestream_local_ltx_files_total` | Gauge | Total number of LTX files in local metadata directory |
-| `ops_litestream_local_ltx_bytes_total` | Gauge | Total size of LTX files in local metadata directory |
+| --- | --- | --- |
+| `ops_litestream_local_ltx_files` | Gauge | Total number of LTX files in local metadata directory |
+| `ops_litestream_local_ltx_bytes` | Gauge | Total size of LTX files in local metadata directory |
 | `ops_litestream_local_ltx_files_by_level` | Gauge | Number of LTX files by compaction level (local) |
 | `ops_litestream_local_ltx_bytes_by_level` | Gauge | Size of LTX files by compaction level (local) |
-| `ops_litestream_remote_ltx_files_total` | Gauge | Total number of LTX files in remote replica (S3/R2) |
-| `ops_litestream_remote_ltx_bytes_total` | Gauge | Total size of LTX files in remote replica (S3/R2) |
+| `ops_litestream_remote_ltx_files` | Gauge | Total number of LTX files in remote replica (S3/R2) |
+| `ops_litestream_remote_ltx_bytes` | Gauge | Total size of LTX files in remote replica (S3/R2) |
 | `ops_litestream_remote_ltx_files_by_level` | Gauge | Number of LTX files by compaction level (remote) |
 | `ops_litestream_remote_ltx_bytes_by_level` | Gauge | Size of LTX files by compaction level (remote) |
 | `ops_litestream_last_scrape_timestamp_seconds` | Gauge | Unix timestamp of last successful scrape |
 | `ops_litestream_scrape_duration_seconds` | Gauge | Duration of last metrics scrape |
-| `ops_litestream_scrape_errors_total` | Gauge | Total scrape errors by source |
+| `ops_litestream_scrape_errors` | Gauge | Total scrape errors by source |
 
 ### Compaction Levels
 
 Litestream uses compaction levels to organize LTX files:
 
 | Level | Name | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | 0 | L0 (raw) | Raw LTX files, no compaction |
 | 1 | L1 (30s) | 30-second compaction |
 | 2 | L2 (5min) | 5-minute compaction |
@@ -35,7 +35,7 @@ Litestream uses compaction levels to organize LTX files:
 Environment variables:
 
 | Variable | Required | Description |
-|----------|----------|-------------|
+| --- | --- | --- |
 | `LOCAL_LTX_DIR` | No | Path to local LTX directory (e.g., `/data/.omni.db-litestream/ltx`) |
 | `S3_BUCKET` | No | S3/R2 bucket name |
 | `S3_PREFIX` | No | S3 prefix/path (e.g., `omni`) |
