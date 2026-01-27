@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2026-01-15T10:58:37Z by kres 6f46343.
+# Generated on 2026-01-27T20:29:00Z by kres c0e89fb.
 
 ARG TOOLCHAIN=scratch
 
@@ -14,7 +14,7 @@ FROM ghcr.io/siderolabs/ca-certificates:v1.12.0 AS image-ca-certificates
 FROM ghcr.io/siderolabs/fhs:v1.12.0 AS image-fhs
 
 # runs markdownlint
-FROM docker.io/oven/bun:1.3.5-alpine AS lint-markdown
+FROM docker.io/oven/bun:1.3.6-alpine AS lint-markdown
 WORKDIR /src
 RUN bun i markdownlint-cli@0.47.0 sentences-per-line@0.5.0
 COPY .markdownlint.json .
@@ -135,6 +135,6 @@ ARG TARGETARCH
 COPY --from=litestream-exporter litestream-exporter-linux-${TARGETARCH} /litestream-exporter
 COPY --from=image-fhs / /
 COPY --from=image-ca-certificates / /
-LABEL org.opencontainers.image.source=https://github.com/alongwill/litestream-exporter
+LABEL org.opencontainers.image.source=https://github.com/siderolabs/litestream-exporter
 ENTRYPOINT ["/litestream-exporter"]
 

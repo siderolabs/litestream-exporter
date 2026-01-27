@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2026-01-15T10:58:37Z by kres 6f46343.
+# Generated on 2026-01-27T20:29:00Z by kres c0e89fb.
 
 # common variables
 
@@ -16,18 +16,18 @@ GOARCH := $(shell uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
 WITH_DEBUG ?= false
 WITH_RACE ?= false
 REGISTRY ?= ghcr.io
-USERNAME ?= alongwill
+USERNAME ?= siderolabs
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
 PROTOBUF_GO_VERSION ?= 1.36.11
 GRPC_GO_VERSION ?= 1.6.0
 GRPC_GATEWAY_VERSION ?= 2.27.4
 VTPROTOBUF_VERSION ?= 0.6.0
-GOIMPORTS_VERSION ?= 0.40.0
+GOIMPORTS_VERSION ?= 0.41.0
 GOMOCK_VERSION ?= 0.6.0
 DEEPCOPY_VERSION ?= v0.5.8
-GOLANGCILINT_VERSION ?= v2.7.2
+GOLANGCILINT_VERSION ?= v2.8.0
 GOFUMPT_VERSION ?= v0.9.2
-GO_VERSION ?= 1.25.5
+GO_VERSION ?= 1.25.6
 GO_BUILDFLAGS ?=
 GO_BUILDTAGS ?= ,
 GO_LDFLAGS ?=
@@ -170,6 +170,9 @@ local-%:  ## Builds the specified target defined in the Dockerfile using the loc
 	      rmdir "$$DEST/$$directory/"; \
 	    fi; \
 	  done'
+
+check-dirty:
+	@if test -n "`git status --porcelain`"; then echo "Source tree is dirty"; git status; git diff; exit 1 ; fi
 
 lint-golangci-lint:  ## Runs golangci-lint linter.
 	@$(MAKE) target-$@
