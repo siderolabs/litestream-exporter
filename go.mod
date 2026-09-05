@@ -3,16 +3,16 @@ module github.com/alongwill/litestream-exporter
 go 1.25.0
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/charmbracelet/bubbles v0.21.0
-	github.com/charmbracelet/bubbletea v1.3.10
-	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/cloudflare/cloudflare-go/v6 v6.5.0
+	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/charmbracelet/bubbles/v2 v2.2.1
+	github.com/charmbracelet/bubbletea/v2 v2.0.9
+	github.com/charmbracelet/lipgloss/v2 v2.0.6
+	github.com/cloudflare/cloudflare-go/v7 v7.10.0
 	github.com/dustin/go-humanize v1.0.1
-	k8s.io/api v0.35.0
-	k8s.io/apimachinery v0.35.0
-	k8s.io/client-go v0.35.0
-	modernc.org/sqlite v1.41.0
+	k8s.io/api v0.37.0
+	k8s.io/apimachinery v0.37.0
+	k8s.io/client-go v0.37.0
+	modernc.org/sqlite v1.58.0
 )
 
 require (
